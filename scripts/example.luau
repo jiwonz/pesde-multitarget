@@ -9,7 +9,7 @@ lib.build(
 	},
 	"dist",
 	{
-	"src",
+		"src",
 	},
 	"LUA_ENV",
 	"pkg"

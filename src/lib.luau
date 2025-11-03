@@ -2,12 +2,15 @@ local stdio = require("@lune/stdio")
 local serde = require("@lune/serde")
 local pathfs = require("../lune_packages/pathfs")
 local fs = pathfs.fs
-local gt = require("../lune_packages/greentea")
+local gt = require("../luau_packages/greentea")
 local glob = require("../lune_packages/glob")
 local process = require("@lune/process")
 local darklua = require("../lune_packages/darklua_lune")
 local Result = require("../lune_packages/result")
-local tableHelper = require("../luau_packages/table_helper")
+local pathfsTypes = require("./pathfsTypes")
+
+local set = require("./tableUtils/set")
+local copy = require("./tableUtils/copy")
 
 local DEFAULT_DARKLUA_RULES = {
 	"remove_unused_if_branch",
@@ -56,7 +59,7 @@ local targetsType = gt.build(gt.table({
 local environmentType = gt.build(gt.union(gt.literal("luau"), gt.literal("lune"), gt.literal("roblox")))
 local optionalStringType = gt.build(gt.opt(gt.string()))
 local optionalStringArrayType = gt.build(gt.opt(gt.array(gt.string())))
-local optionalAsPathType = gt.build(gt.opt(pathfs.types.AsPath:type()))
+local optionalAsPathType = gt.build(gt.opt(pathfsTypes.AsPathType:type()))
 local optionalBooleanType = gt.build(gt.opt(gt.boolean()))
 
 local requireModeName = gt.union(gt.literal("path"), gt.literal("luau"))
@@ -108,12 +111,12 @@ function multitarget.build(
 	luauPkgAlias: typeof(optionalStringType:type()),
 	strict: typeof(optionalBooleanType:type()),
 	requireMode: typeof(optionalRequireModeType:type())
-): Result.Result<pathfs.Directory, {
+): Result.Result<pathfs.DirectoryPath, {
 	message: string,
-	outputDir: pathfs.Directory?,
+	outputDir: pathfs.DirectoryPath?,
 }>
-	pathfs.types.AsPath:assert(pesdeTomlPath)
-	pathfs.types.AsPath:assert(outputPath)
+	pathfsTypes.AsPathType:assert(pesdeTomlPath)
+	pathfsTypes.AsPathType:assert(outputPath)
 	targetsType:assert(targets)
 	optionalStringArrayType:assert(buildFiles)
 	optionalStringType:assert(luaEnvGlobal)
@@ -135,7 +138,7 @@ function multitarget.build(
 	-- selene: allow(shadowing)
 	local pkgAlias = pkgAlias or DEFAULT_PKG_ALIAS
 	-- selene: allow(shadowing)
-	local pesdeTomlFile = pathfs.File.fromExisting(pesdeTomlPath)
+	local pesdeTomlFile = pathfs.FilePath.fromExisting(pesdeTomlPath)
 	local outputDir = pathfs.findDir(outputPath)
 	if outputDir then
 		return Result.Err({
@@ -143,7 +146,7 @@ function multitarget.build(
 		})
 	end
 	-- selene: allow(shadowing)
-	local outputDir = pathfs.Directory.create(outputPath)
+	local outputDir = pathfs.DirectoryPath.new(outputPath):withDirWritten()
 	local workingDirPath = pathfs.canonicalize(pesdeTomlFile.path):parent() or pathfs.cwd()
 
 	local pesdeToml: {
@@ -236,11 +239,11 @@ function multitarget.build(
 		end
 		environmentType:assert(target)
 
-		local targetDir = pathfs.Directory.new(outputDir.path:join(target))
+		local targetDir = pathfs.DirectoryPath.new(outputDir.path:join(target))
 		targetDir:writeDir() -- assure it exists (may not exist later if the user uses "includes" incorrectly, which would throw an undescriptive error later when trying to access this directory)
 
 		-- selene: allow(shadowing)
-		local newPesdeToml = tableHelper.copy(pesdeToml, true)
+		local newPesdeToml = copy(pesdeToml, true)
 		if newPesdeToml.includes then
 			for _, include in newPesdeToml.includes do
 				for _, path in
@@ -284,18 +287,18 @@ function multitarget.build(
 		newPesdeToml.private = nil
 
 		if #pesdeAddParams > 0 then -- there are dependencies
-			local luaurcFile = pathfs.File.new(targetDir.path:join(".luaurc"))
+			local luaurcFile = pathfs.FilePath.new(targetDir.path:join(".luaurc"))
 			local luaurc: {
 				aliases: { [string]: string? }?,
 			} = if luaurcFile:isFile()
 				then serde.decode("json", luaurcFile:readFile())
 				else {}
-			tableHelper.set(luaurc, { "aliases", pkgAlias }, `./{target}_packages/`)
+			set(luaurc, { "aliases", pkgAlias }, `./{target}_packages/`)
 			if targets.lune then
 				if target == "lune" then
-					tableHelper.set(luaurc, { "aliases", luauPkgAlias }, `./luau_packages/`)
+					set(luaurc, { "aliases", luauPkgAlias }, `./luau_packages/`)
 				elseif target == "roblox" then
-					tableHelper.set(luaurc, { "aliases", luauPkgAlias }, `./roblox_packages/`)
+					set(luaurc, { "aliases", luauPkgAlias }, `./roblox_packages/`)
 				end
 			end
 			luaurcFile:writeFile(serde.encode("json", luaurc, true))
@@ -367,7 +370,7 @@ function multitarget.build(
 				continue
 			end
 
-			local targetDir = pathfs.Directory.new(outputDir.path:join(target))
+			local targetDir = pathfs.DirectoryPath.new(outputDir.path:join(target))
 			local injectGlobalValueRule = {
 				rule = "inject_global_value",
 				identifier = luaEnvGlobal,

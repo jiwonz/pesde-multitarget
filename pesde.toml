@@ -18,15 +18,15 @@ default = "https://github.com/pesde-pkg/index"
 example = "scripts/example.luau"
 
 [engines]
-lune = "^0.9.4"
-pesde = "^0.7.0-rc.1"
+lune = "^0.10.3"
+pesde = "^0.7.1"
 
 [dependencies]
-pathfs = { name = "jiwonz/pathfs", version = "^0.6.0-rc.8" }
-greentea = { name = "corecii/greentea", version = "^0.4.11" }
+pathfs = { name = "jiwonz/pathfs", version = "^0.6.0" }
+greentea = { name = "jiwonz/greentea_luau", version = "^0.2.0", target = "luau" }
 argparse = { name = "caveful_games/argparse", version = "^0.1.2" }
-glob = { name = "jiwonz/glob", version = "^0.1.1" }
-darklua_lune = { name = "jiwonz/darklua_lune", version = "^0.2.0" }
-result = { name = "lukadev_0/result", version = "^1.2.0" }
-chalk_luau = { name = "kimpure/chalk_luau", version = "^0.1.7", target = "luau" }
-table_helper = { name = "caveful_games/table_helper", version = "^0.2.0-rc.1", target = "luau" }
+glob = { name = "jiwonz/glob", version = "^0.2.0" }
+darklua_lune = { name = "jiwonz/darklua_lune", version = "^0.3.0" }
+result = { name = "lukadev_0/result", version = "^1.2.1" }
+chalk_luau = { name = "kimpure/chalk_luau", version = "^0.1.8", target = "luau" }
+luau_path = { name = "jiwonz/luau_path", version = "^0.2.0", target = "luau" }
